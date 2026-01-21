@@ -1,0 +1,40 @@
+cookie:
+  expiry_days: 1
+  key: EXPIRY_DAYS_LOGIN
+  name: Days to re-login
+credentials:
+  usernames:
+    thalita.alves@hznpartners.com.br:
+      email: thalita.alves@hznpartners.com.br
+      logged_in: false
+      first_name: Thalita
+      last_name: Alves
+      password: $2b$12$dwaSnN72r80Ls7r6tj/EXuYcCxFijEqgj8V0EON6ZtcsQ0EFqc25O
+      roles:
+        - editor
+    victor.ribeiro@hznpartners.com.br:
+      email: victor.ribeiro@hznpartners.com.br
+      logged_in: false
+      first_name: Victor
+      last_name: Ribeiro
+      password: $2b$12$NTIB7.S5LKMqQ8Cgzj5qcu9.15unjuOkC90hBtLMBwJt4ahoFNtcW
+      roles:
+        - admin
+    mario.batista@hznpartners.com.br:
+      email: mario.batista@hznpartners.com.br
+      logged_in: false
+      first_name: Mario
+      last_name: Batista
+      password: $2b$12$X7gprVBoRLI4Qdlu/4iTW../x041Z0gIbonL902ehrx9rcg0KOigq
+    carlos.cestari@hznpartners.com.br:
+      email: carlos.cestari@hznpartners.com.br
+      logged_in: false
+      first_name: Carlos
+      last_name: Cestari
+      password: $2b$12$t3t31rThXxD0xP.ylzJ6tOXclQhKAe/2ff4EKQNr22hd8pQhrlFz.
+pre-authorized:
+  emails:
+  - osni.diniz@hznpartners.com.br
+  - alessandro.jorge@hznpartners.com.br
+  - itamar.damascena@hznparnters.com.br
+api_key: 3a3gm8mwlg6gtb677g4osrdg7itxxhb6

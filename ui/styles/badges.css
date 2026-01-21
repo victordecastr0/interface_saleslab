@@ -1,0 +1,6 @@
+.badge{display:inline-block;padding:2px 8px;font-size:12px;border-radius:999px;color:#fff;line-height:20px}
+.badge.aprovado{background:#16a34a}
+.badge.reprovado{background:#ef4444}
+.badge.pendente{background:#f59e0b}
+.badge.auditavel{background:#3b82f6}
+.badge.default{background:#64748b}
