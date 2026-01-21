@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 from auth import auth_gate
 from clients import addsales_client
-from core.state import init_session_state
+from core.state import bump_leads_version, get_leads_query, init_session_state
 from db.engine import get_engine
 from db.repos import lead_repo
 from services import audit_services
@@ -32,6 +32,30 @@ inject_badges_css()
 init_session_state()
 
 ITEMS_PER_PAGE = 10
+
+
+@st.cache_data(show_spinner="Carregando leads...")
+def load_leads_snapshot(d_start: date, d_end: date, version: int) -> pd.DataFrame:
+    db_engine = get_engine("local")
+    df = lead_repo.fetch_leads(db_engine, d_start=d_start, d_end=d_end)
+    df = fmt_leads_features(df)
+
+    if len(df) > 0:
+        df["status"] = df.apply(define_lead_status, axis=1)
+        df = df.sort_values("lead_dt", ascending=False)
+
+    return df
+
+
+def get_leads_dataframe(start: date, end: date) -> pd.DataFrame:
+    leads_query = get_leads_query(start, end)
+    if st.session_state.get("_leads_query") != leads_query:
+        st.session_state["_leads_query"] = leads_query
+        st.session_state["df_leads"] = load_leads_snapshot(
+            leads_query.start, leads_query.end, leads_query.version
+        )
+
+    return st.session_state.get("df_leads") or pd.DataFrame()
 
 
 def build_overall_metrics(df: pd.DataFrame, end_date) -> None:
@@ -223,7 +247,7 @@ def update_audit_result_features(lead_id, decision, pending_obs=None, denied_obs
         st.error(result.message)
         return
 
-    st.cache_data.clear()
+    bump_leads_version()
     st.rerun()
 
 
@@ -253,16 +277,11 @@ if st.session_state.get("authentication_status"):
         end = st.date_input("Fim", date.today(), format="DD/MM/YYYY")
 
     db_engine = get_engine("local")
-
-    df_leads = lead_repo.fetch_leads(db_engine, d_start=start, d_end=end)
-    df_leads = fmt_leads_features(df_leads)
+    df_leads = get_leads_dataframe(start, end)
 
     if len(df_leads) == 0:
         st.error("No intervalo escolhido não existe nenhum lead...")
     else:
-        df_leads["status"] = df_leads.apply(define_lead_status, axis=1)
-        df_leads = df_leads.sort_values("lead_dt", ascending=False)
-
         build_overall_metrics(df_leads, end)
 
         if st.button(
@@ -271,6 +290,7 @@ if st.session_state.get("authentication_status"):
             icon="🔄",
             type="tertiary",
         ):
+            bump_leads_version()
             st.cache_data.clear()
             st.rerun()
 

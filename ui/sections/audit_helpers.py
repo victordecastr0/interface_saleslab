@@ -5,6 +5,7 @@ from typing import Iterable
 import pandas as pd
 import streamlit as st
 
+from core.state import bump_leads_version
 from db.repos import lead_repo
 from services import audit_services
 
@@ -72,7 +73,7 @@ def create_decision_structure(
             analysis_result = analysis_result_map.get(sel, "pendente")
             lead_repo.update_audit_step(db_engine, lead_id, suffix, analysis_result)
 
-            st.cache_data.clear()
+            bump_leads_version()
             st.rerun()
 
 
@@ -94,3 +95,7 @@ def update_audit_step_features(
 
     if not result.ok:
         st.error(result.message)
+        return
+
+    bump_leads_version()
+    st.rerun()

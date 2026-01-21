@@ -5,6 +5,7 @@ from datetime import date, datetime
 import pandas as pd
 import streamlit as st
 
+from db.engine import get_engine
 from db.repos import vtal_repo
 from ui.formatters import fmt_cnpj, fmt_date, fmt_monetary_value, fmt_rg, fmt_cpf
 from ui.sections import address_helpers
@@ -232,7 +233,7 @@ def build_vtal_analysis(lead, *, db_engine) -> None:
     )
 
     address = lead["vtal_address"]["address"]
-    add_df = vtal_repo.fetch_vtal_history(db_engine, address)
+    add_df = fetch_vtal_history(address)
 
     with st.expander("Histórico completo de HCs"):
         st.dataframe(add_df, hide_index=True)
@@ -298,6 +299,12 @@ def build_vtal_analysis(lead, *, db_engine) -> None:
         lead,
         db_engine=db_engine,
     )
+
+
+@st.cache_data(show_spinner=False)
+def fetch_vtal_history(address: dict) -> pd.DataFrame:
+    db_engine = get_engine("local")
+    return vtal_repo.fetch_vtal_history(db_engine, address)
 
 
 def build_escavador_analysis(lead, *, db_engine) -> None:
