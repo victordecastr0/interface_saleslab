@@ -1,7 +1,16 @@
+from __future__ import annotations
+
+from datetime import date
+
+import pandas as pd
 import streamlit as st
 
+from ui.formatters import fmt_date, fmt_zipcode
+from ui.sections.audit_helpers import create_decision_structure, update_audit_step_features
+from ui.tables import build_tabela_enderecos
 
-def build_availability_analysis(lead):
+
+def build_availability_analysis(lead, *, db_engine):
     availability_analysis = lead['vtal_availability']
 
     if availability_analysis is None:
@@ -18,7 +27,12 @@ def build_availability_analysis(lead):
 
         if lead['hzn_address_info_result'] != 'reprovado':
             st.error(f"Cliente **reprovado** na consulta de viabilidade - {fmt_date(date.today())}")
-            update_audit_step_features(lead['lead_id'], 'reprovado', 'address_info')
+            update_audit_step_features(
+                db_engine=db_engine,
+                lead_id=lead["lead_id"],
+                decision="reprovado",
+                field="address_info",
+            )
         else:
             st.error(f"Cliente **reprovado** na consulta de viabilidade - {fmt_date(lead['hzn_address_info_dt'])}")
     else:
@@ -28,7 +42,7 @@ def build_availability_analysis(lead):
     return
 
 
-def build_address_analysis(lead):
+def build_address_analysis(lead, *, db_engine):
     address_data = lead['vtal_address']
 
     if address_data is None:
@@ -56,7 +70,7 @@ def build_address_analysis(lead):
 
         with address_data_columns_top[1]:
             st.caption('Rua')
-            st.write(f'{address_data['streetType']} {address_data['streetName']}')
+            st.write(f"{address_data['streetType']} {address_data['streetName']}")
 
         with address_data_columns_top[2]:
             st.caption('Número')
@@ -71,7 +85,10 @@ def build_address_analysis(lead):
 
             if lead['vtal_address_complements'] is not None:
 
-                complement = [f'{compl['description']} {compl['value']}' for compl in lead['vtal_address_complements']['complement']['complements']]
+                complement = [
+                    f"{compl['description']} {compl['value']}"
+                    for compl in lead["vtal_address_complements"]["complement"]["complements"]
+                ]
                 complement = ", ".join(complement)
             else:
                 complement = '—'
@@ -84,7 +101,7 @@ def build_address_analysis(lead):
 
         with address_data_columns_bottom[2]:
             st.caption('Cidade')
-            st.write(f'{address_data['city']} - {address_data['state']}')
+            st.write(f"{address_data['city']} - {address_data['state']}")
 
     st.caption('Link do comprovante de endereço enviado')
     doc_url = lead['doc_link'] if not pd.isna(lead['doc_link']) else '—'
@@ -104,13 +121,18 @@ def build_address_analysis(lead):
         st.error(f"Cliente **reprovado** na consulta de viabilidade - {fmt_date(lead['hzn_address_info_dt'])}")
 
     else:
-        create_decision_structure('Resultado Análise do Endereço', 'address_info', lead)
+        create_decision_structure(
+            "Resultado Análise do Endereço",
+            "address_info",
+            lead,
+            db_engine=db_engine,
+        )
 
     return
 
 
 
-def buiild_street_view_analysis(lead):
+def build_street_view_analysis(lead, *, db_engine):
     coords = lead['vtal_address']
 
     if coords is None or ('geolocation' not in coords['address']):
@@ -128,5 +150,9 @@ def buiild_street_view_analysis(lead):
     
     st.write(f'https://www.google.com.br/maps?q=&layer=c&cbll={coords}&cbp=11,150,0,0,0')
 
-    create_decision_structure('Resultado Análise Google Street View', 'street_view', lead)
-    return 
+    create_decision_structure(
+        "Resultado Análise Google Street View",
+        "street_view",
+        lead,
+        db_engine=db_engine,
+    )

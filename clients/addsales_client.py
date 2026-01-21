@@ -28,22 +28,20 @@ def update_lead(
     Minimal HTTP client for AddSales update.
     Behavior: raises on non-2xx to make failures explicit.
     """
-    if not endpoint:
-        raise AddSalesError("endpoint vazio")
+    if not token:
+        raise AddSalesError("token vazio")
     if not addsales_code:
         raise AddSalesError("addsales_code vazio")
 
     url = f"https://facilito.promo/planos/hzn/audit/result?token={token}"
 
-    headers = {
-        "Content-Type": "application/json"
-    }
+    headers = headers or {"Content-Type": "application/json"}
 
     try:
         r = requests.post(
             url,
             headers=headers,
-            data=json.dumps(payload),
+            json=payload,
             timeout=timeout_s,
         )
     except requests.RequestException as e:
