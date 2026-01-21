@@ -6,6 +6,47 @@ import pandas as pd
 import streamlit as st
 
 
+def _normalize_digits(value: str) -> str:
+    return "".join(char for char in str(value) if char.isdigit())
+
+
+def _apply_leads_filter(df: pd.DataFrame, filter_type: str, filter_value: str) -> pd.DataFrame:
+    if filter_type == "Nenhum":
+        return df
+
+    cleaned_value = str(filter_value or "").strip()
+    if not cleaned_value:
+        return df
+
+    if filter_type == "Nome":
+        if "name" not in df.columns:
+            st.warning("Filtro por nome indisponível (coluna ausente).")
+            return df
+        return df[df["name"].astype(str).str.contains(cleaned_value, case=False, na=False)]
+
+    if filter_type == "CPF":
+        if "cpf" not in df.columns:
+            st.warning("Filtro por CPF indisponível (coluna ausente).")
+            return df
+        digits = _normalize_digits(cleaned_value)
+        if not digits:
+            return df
+        cpf_series = df["cpf"].astype(str).str.replace(r"\D", "", regex=True)
+        return df[cpf_series.str.contains(digits, na=False)]
+
+    if filter_type == "CEP":
+        if "cep" not in df.columns:
+            st.warning("Filtro por CEP indisponível (coluna ausente).")
+            return df
+        digits = _normalize_digits(cleaned_value)
+        if not digits:
+            return df
+        cep_series = df["cep"].astype(str).str.replace(r"\D", "", regex=True)
+        return df[cep_series.str.contains(digits, na=False)]
+
+    return df
+
+
 def status_badge(text: str) -> str:
     cls = {
         "Aprovado": "aprovado",
@@ -57,6 +98,30 @@ def manage_lead_selection_visuals(df: pd.DataFrame) -> None:
 def build_lead_overall_display(df: pd.DataFrame, *, items_per_page: int) -> None:
     st.subheader("Leads por Status")
 
+    prev_filter_type = st.session_state.get("leads_filter_type", "Nenhum")
+    prev_filter_value = st.session_state.get("leads_filter_value", "")
+
+    filter_left, filter_right = st.columns([1, 2])
+    with filter_left:
+        selected_filter_type = st.selectbox(
+            "Filtrar por",
+            ["Nenhum", "CEP", "CPF", "Nome"],
+            key="leads_filter_type_select",
+        )
+    with filter_right:
+        filter_placeholder = {
+            "CEP": "Digite o CEP",
+            "CPF": "Digite o CPF",
+            "Nome": "Digite o nome",
+            "Nenhum": "Selecione um tipo de filtro",
+        }[selected_filter_type]
+        selected_filter_value = st.text_input(
+            "Valor do filtro",
+            key="leads_filter_value_input",
+            placeholder=filter_placeholder,
+            disabled=selected_filter_type == "Nenhum",
+        )
+
     all_statuses = sorted(df["status"].dropna().unique().tolist())
     status_options = ["Todos"] + all_statuses
 
@@ -72,10 +137,24 @@ def build_lead_overall_display(df: pd.DataFrame, *, items_per_page: int) -> None
         st.session_state["leads_selected_status"] = selected_status
         st.session_state["leads_page"] = 1
 
+    if (
+        selected_filter_type != prev_filter_type
+        or selected_filter_value != prev_filter_value
+    ):
+        st.session_state["leads_filter_type"] = selected_filter_type
+        st.session_state["leads_filter_value"] = selected_filter_value
+        st.session_state["leads_page"] = 1
+
     if selected_status == "Todos":
         df_filtered = df.copy()
     else:
         df_filtered = df[df["status"] == selected_status].copy()
+
+    df_filtered = _apply_leads_filter(
+        df_filtered,
+        st.session_state.get("leads_filter_type", "Nenhum"),
+        st.session_state.get("leads_filter_value", ""),
+    )
 
     total_items = len(df_filtered)
     total_pages = max((total_items - 1) // items_per_page + 1, 1)

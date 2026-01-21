@@ -22,6 +22,8 @@ def init_session_state() -> None:
     st.session_state.setdefault("leads_page", 1)
     st.session_state.setdefault("leads_selected_status", "Todos")
     st.session_state.setdefault("leads_selected_lead_id", None)
+    st.session_state.setdefault("leads_filter_type", "Nenhum")
+    st.session_state.setdefault("leads_filter_value", "")
     st.session_state.setdefault("leads_data_version", 0)
     st.session_state.setdefault("_leads_query", None)
     st.session_state.setdefault("df_leads", None)
