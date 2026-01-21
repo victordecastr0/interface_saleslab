@@ -55,7 +55,8 @@ def get_leads_dataframe(start: date, end: date) -> pd.DataFrame:
             leads_query.start, leads_query.end, leads_query.version
         )
 
-    return st.session_state.get("df_leads") or pd.DataFrame()
+    df_leads = st.session_state.get("df_leads")
+    return df_leads if df_leads is not None else pd.DataFrame()
 
 
 def build_overall_metrics(df: pd.DataFrame, end_date) -> None:
