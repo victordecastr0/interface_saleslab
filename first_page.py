@@ -1,35 +1,27 @@
 import locale
-
-from functools import partial
 import os
+from datetime import date, datetime, timedelta
+from functools import partial
 
 import pandas as pd
 import streamlit as st
+from dotenv import load_dotenv
 
-from ui.styles import inject_badges_css
-from ui.formatters import fmt_date, fmt_leads_features
-
-from ui.components.leads_view import (
-    build_detailed_lead_display,
-    build_lead_overall_display,
-)
-
+from auth import auth_gate
+from clients import addsales_client
+from core.state import init_session_state
 from db.engine import get_engine
 from db.repos import lead_repo
 from services import audit_services
 from services.lead_status_service import define_lead_status
-from clients import addsales_client
-from core.state import init_session_state
-
-from ui.sections.general import build_general_info_for_lead
+from ui.components.leads_view import build_detailed_lead_display, build_lead_overall_display
+from ui.formatters import fmt_date, fmt_leads_features
 from ui.sections.analysis import (
-    build_first_analysis_info_for_lead,
     build_detailed_analysis_info_for_lead,
+    build_first_analysis_info_for_lead,
 )
-
-from dotenv import load_dotenv
-from datetime import date, datetime, timedelta
-from auth import auth_gate
+from ui.sections.general import build_general_info_for_lead
+from ui.styles import inject_badges_css
 
 
 locale.setlocale(locale.LC_ALL, "")
@@ -46,13 +38,17 @@ def build_overall_metrics(df: pd.DataFrame, end_date) -> None:
     df_local = df.copy() if df is not None else pd.DataFrame()
 
     if "lead_dt" in df_local.columns:
-        df_local['lead_dt'] = pd.to_datetime(df_local['lead_dt'], errors='coerce')
+        df_local["lead_dt"] = pd.to_datetime(df_local["lead_dt"], errors="coerce")
 
     end_ts = pd.to_datetime(end_date)
     week_start = end_ts - pd.Timedelta(days=7)
 
     total_leads = int(df_local.shape[0])
-    status_col = df_local["status"].fillna("") if "status" in df_local.columns else pd.Series([], dtype=str)
+    status_col = (
+        df_local["status"].fillna("")
+        if "status" in df_local.columns
+        else pd.Series([], dtype=str)
+    )
 
     if "lead_dt" in df_local.columns:
         novos_leads = int(df_local[df_local["lead_dt"] >= week_start].shape[0])
@@ -76,23 +72,30 @@ def build_overall_metrics(df: pd.DataFrame, end_date) -> None:
         f"{'+' if delta_novos_leads > 0 else ('-' if delta_novos_leads < 0 else '')}"
         f"{delta_novos_leads:.1f}%"
     )
-    
     k1, k2, k3, k4, k5, k6 = st.columns(6)
-    with k1: st.metric("Total de Leads no Período", f"{total_leads:,}".replace(",", "."))
-    with k2: st.metric("Leads da Última Semana", f"{novos_leads:,}".replace(",", "."), delta_novos_leads)
-    with k3: st.metric("Leads Aprovados", f"{leads_aprovados:,}".replace(",", "."))
-    with k4: st.metric("Leads Reprovados", f"{leads_reprovados:,}".replace(",", "."))
-    with k5: st.metric("**Leads Abertos**", f"{leads_abertos:,}".replace(",", "."))
-    with k6: st.metric("**Leads Auditáveis**", f"{leads_auditaveis:,}".replace(",", "."))
-
-    return
+    with k1:
+        st.metric("Total de Leads no Período", f"{total_leads:,}".replace(",", "."))
+    with k2:
+        st.metric(
+            "Leads da Última Semana",
+            f"{novos_leads:,}".replace(",", "."),
+            delta_novos_leads,
+        )
+    with k3:
+        st.metric("Leads Aprovados", f"{leads_aprovados:,}".replace(",", "."))
+    with k4:
+        st.metric("Leads Reprovados", f"{leads_reprovados:,}".replace(",", "."))
+    with k5:
+        st.metric("**Leads Abertos**", f"{leads_abertos:,}".replace(",", "."))
+    with k6:
+        st.metric("**Leads Auditáveis**", f"{leads_auditaveis:,}".replace(",", "."))
 
 
 def build_audit_structure(lead):
-    st.subheader('Decisão da Auditoria')
+    st.subheader("Decisão da Auditoria")
 
-    decision_made = not pd.isna(lead['hzn_final_result'])
-    edit_mode = st.session_state.get('new_decision', False)
+    decision_made = not pd.isna(lead["hzn_final_result"])
+    edit_mode = st.session_state.get("new_decision", False)
 
     controls_disabled = decision_made and not edit_mode
     
@@ -109,11 +112,11 @@ def build_audit_structure(lead):
         reject_click = st.button("🛑 Reprovar", use_container_width=True, disabled=controls_disabled)
 
     if pendency_click:
-        st.session_state.audit_action = 'pendente'
+        st.session_state.audit_action = "pendente"
         st.session_state.new_decision = True
         st.rerun()
     if reject_click:
-        st.session_state.audit_action = 'reprovado'
+        st.session_state.audit_action = "reprovado"
         st.session_state.new_decision = True
         st.rerun()
 
@@ -180,8 +183,12 @@ def build_audit_structure(lead):
                         st.session_state.audit_action = None
     
     if decision_made:
-        fmt_status = lead['status'].split(' - ')[0]
-        color = 'red' if fmt_status == 'Reprovado' else ('yellow' if fmt_status == 'Pendente' else 'green')
+        fmt_status = lead["status"].split(" - ")[0]
+        color = (
+            "red"
+            if fmt_status == "Reprovado"
+            else ("yellow" if fmt_status == "Pendente" else "green")
+        )
 
         st.info(
             "Lead já auditado. Decisão feita: "
@@ -189,20 +196,18 @@ def build_audit_structure(lead):
         )
 
         if not edit_mode:
-            if lead['hzn_final_result'] == 'pendente':
+            if lead["hzn_final_result"] == "pendente":
                 st.info(f"Motivos registrados: {lead['hzn_pending']}")
-            elif lead['hzn_final_result'] == 'reprovado':
+            elif lead["hzn_final_result"] == "reprovado":
                 st.info(f"Motivos registrados: {lead['hzn_denied']}")
 
             if st.button("Editar decisão", use_container_width=True):
                 st.session_state.new_decision = True
                 st.rerun()
         else:
-           if st.button("**Cancelar edição**", use_container_width=True, type='primary'):
+            if st.button("**Cancelar edição**", use_container_width=True, type="primary"):
                 st.session_state.new_decision = False
-                st.rerun() 
-
-    return
+                st.rerun()
 
 
 def update_audit_result_features(lead_id, decision, pending_obs=None, denied_obs=None):
@@ -220,45 +225,52 @@ def update_audit_result_features(lead_id, decision, pending_obs=None, denied_obs
 
     st.cache_data.clear()
     st.rerun()
-    return
 
 
 st.set_page_config(page_title="SalesLab", page_icon="🔬", layout="wide")
 authenticator = auth_gate()
 
-if st.session_state.get('authentication_status'):
-    st.title('Histórico de Leads - SalesLab')
+if st.session_state.get("authentication_status"):
+    st.title("Histórico de Leads - SalesLab")
 
     with st.sidebar:
         name = st.session_state.name
-        username = st.session_state.username
 
         st.markdown(f"**Olá, {name}** 👋")
         authenticator.logout("Sair", "sidebar")
 
 
-    c1, c2, c3 = st.columns([1.2,1,1])
+    c1, c2, c3 = st.columns([1.2, 1, 1])
     with c1:
         st.subheader("Resumo de Leads")
     with c2:
-        start = st.date_input("Início", date.today() - timedelta(days=30), format='DD/MM/YYYY')
+        start = st.date_input(
+            "Início",
+            date.today() - timedelta(days=30),
+            format="DD/MM/YYYY",
+        )
     with c3:
-        end = st.date_input("Fim", date.today(), format='DD/MM/YYYY')
+        end = st.date_input("Fim", date.today(), format="DD/MM/YYYY")
 
-    db_engine = get_engine('local')
+    db_engine = get_engine("local")
 
     df_leads = lead_repo.fetch_leads(db_engine, d_start=start, d_end=end)
     df_leads = fmt_leads_features(df_leads)
 
     if len(df_leads) == 0:
-        st.error('No intervalo escolhido não existe nenhum lead...')
+        st.error("No intervalo escolhido não existe nenhum lead...")
     else:
-        df_leads['status'] = df_leads.apply(define_lead_status, axis=1)
+        df_leads["status"] = df_leads.apply(define_lead_status, axis=1)
         df_leads = df_leads.sort_values("lead_dt", ascending=False)
 
         build_overall_metrics(df_leads, end)
 
-        if st.button('**Atualizar Leads**', use_container_width=True, icon='🔄', type='tertiary'):
+        if st.button(
+            "**Atualizar Leads**",
+            use_container_width=True,
+            icon="🔄",
+            type="tertiary",
+        ):
             st.cache_data.clear()
             st.rerun()
 
@@ -283,5 +295,4 @@ if st.session_state.get('authentication_status'):
             )
 
 else:
-    st.write(st.session_state.get('authentication_status'))
-    pass
+    st.write(st.session_state.get("authentication_status"))
