@@ -76,12 +76,12 @@ def build_general_info_for_lead(lead):
     with core_columns_bottom[1]:
         st.caption('Filiação')
 
-        if lead['fathersname'] is None:
-            st.write(f'{lead['mothersname']} (Mãe)')
-        elif lead['mothersname'] is None:
-            st.write(f'{lead['fathersname']} (Pai)')
+        if lead["fathersname"] is None:
+            st.write(f"{lead['mothersname']} (Mãe)")
+        elif lead["mothersname"] is None:
+            st.write(f"{lead['fathersname']} (Pai)")
         else:
-            st.write(f'{lead['fathersname']} & {lead['mothersname']}')
+            st.write(f"{lead['fathersname']} & {lead['mothersname']}")
     with core_columns_bottom[2]:
         st.caption('Senha para acesso de documentos')
         st.code(lead['doc_link_password'], language=None)
