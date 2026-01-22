@@ -374,13 +374,14 @@ def build_serasa_analysis(lead, *, db_engine) -> None:
         return
 
     dividas = lead["serasa_json"]["negativeData"]["pefin"]
+    protestos = lead["serasa_json"]["negativeData"]["notary"]
 
     valor_total = dividas["summary"]["balance"]
     desc_dividas = dividas["pefinResponse"]
 
     score_serasa = int(lead["credit_score"]) if not pd.isna(lead["credit_score"]) else "—"
 
-    serasa_data_columnns = st.columns(4)
+    serasa_data_columnns = st.columns(5)
     with serasa_data_columnns[0]:
         st.caption("Status CPF")
         st.write(lead["statusregistration"])
@@ -394,6 +395,10 @@ def build_serasa_analysis(lead, *, db_engine) -> None:
         st.write(fmt_monetary_value(valor_total))
 
     with serasa_data_columnns[3]:
+        st.caption("Dívidas protestadas")
+        st.write(f"{int(protestos['summary']['count'])} ({fmt_monetary_value(protestos['summary']['balance'])})")
+
+    with serasa_data_columnns[4]:
         st.caption("Renda estimada")
         st.write(fmt_monetary_value(lead["renda_estimada"]))
 
