@@ -14,7 +14,7 @@ def _apply_leads_filter(df: pd.DataFrame, filter_type: str, filter_value: str) -
     if filter_type == "Nenhum":
         return df
 
-    cleaned_value = str(filter_value or "").strip()
+    cleaned_value = str(filter_value or "").strip().lower()
     if not cleaned_value:
         return df
 
@@ -22,7 +22,7 @@ def _apply_leads_filter(df: pd.DataFrame, filter_type: str, filter_value: str) -
         if "name" not in df.columns:
             st.warning("Filtro por nome indisponível (coluna ausente).")
             return df
-        return df[df["name"].astype(str).str.contains(cleaned_value, case=False, na=False)]
+        return df[df["name"].astype(str).str.lower().str.contains(cleaned_value, case=False, na=False)]
 
     if filter_type == "CPF":
         if "cpf" not in df.columns:
@@ -34,14 +34,19 @@ def _apply_leads_filter(df: pd.DataFrame, filter_type: str, filter_value: str) -
         cpf_series = df["cpf"].astype(str).str.replace(r"\D", "", regex=True)
         return df[cpf_series.str.contains(digits, na=False)]
 
-    if filter_type == "CEP":
-        if "cep" not in df.columns:
-            st.warning("Filtro por CEP indisponível (coluna ausente).")
-            return df
+    if filter_type == "CEP":        
         digits = _normalize_digits(cleaned_value)
+        
         if not digits:
             return df
-        cep_series = df["cep"].astype(str).str.replace(r"\D", "", regex=True)
+        
+        cep_series = df["vtal_address"].apply(
+            lambda x: x['address']['zipCode'] \
+            if (x is not None) and ('address' in x) else ""
+        )
+        cep_series = cep_series.astype(str).str.replace(r"\D", "", regex=True)
+        
+
         return df[cep_series.str.contains(digits, na=False)]
 
     return df

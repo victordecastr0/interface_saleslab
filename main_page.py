@@ -49,7 +49,8 @@ def load_leads_snapshot(d_start: date, d_end: date, version: int) -> pd.DataFram
 
 def get_leads_dataframe(start: date, end: date) -> pd.DataFrame:
     leads_query = get_leads_query(start, end)
-    if st.session_state.get("_leads_query") != leads_query:
+
+    if st.session_state.get("_leads_query") != leads_query or st.session_state.get("df_leads") is None:
         st.session_state["_leads_query"] = leads_query
         st.session_state["df_leads"] = load_leads_snapshot(
             leads_query.start, leads_query.end, leads_query.version
@@ -271,7 +272,7 @@ if st.session_state.get("authentication_status"):
     with c2:
         start = st.date_input(
             "Início",
-            date.today() - timedelta(days=30),
+            date.today() - timedelta(days=7),
             format="DD/MM/YYYY",
         )
     with c3:
